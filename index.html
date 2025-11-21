@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>arsvt3d - 伪3D终端迷宫游戏</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/rust.min.js"></script>
+</head>
+<body>
+    <header>
+        <h1>arsvt3d</h1>
+        <p class="subtitle">伪3D终端迷宫游戏</p>
+		<p class="subtitle">https://github.com//nlsidf/arsvt</p>
+        <nav>
+            <a href="#about">项目介绍</a>
+            <a href="#implementation">实现思路</a>
+            <a href="#source-code">源代码</a>
+            <a href="#screenshots">游戏截图</a>
+            <a href="#demo" class="demo-link">在线预览</a>
+            <a href="#download">下载安装</a>
+        </nav>
+    </header>
+
+    <!-- 预加载在线演示 -->
+    <link rel="preload" href="https://arsvt3d.netlify.app/" as="document" crossorigin="anonymous">
+
+    <main>
+        <section id="hero">
+            <div class="hero-content">
+                <h2>使用 Rust 和 Ratatui 实现的终端3D迷宫</h2>
+                <p>在保证效果的基础上尽可能节约系统资源的伪3D渲染迷宫，采用ASCII字符画风格和TUI技术</p>
+                <div class="hero-buttons">
+                    <a href="#demo" class="btn demo-btn primary">在线预览</a>
+                    <a href="#screenshots" class="btn screenshot-btn secondary">查看截图</a>
+                    <a href="#download" class="btn secondary">立即下载</a>
+                    <a href="#source-code" class="btn secondary">查看源码</a>
+                </div>
+            </div>
+            <div class="hero-preview">
+                <div class="terminal">
+                    <div class="terminal-header">
+                        <div class="terminal-button red"></div>
+                        <div class="terminal-button yellow"></div>
+                        <div class="terminal-button green"></div>
+                        <span class="terminal-title">arsvt3d</span>
+                    </div>
+                    <div class="terminal-content">
+                        <pre>╔══════════════════════════════════════════════════════╗
+║             ╔═╗  ╔╗   ╔═╗  ╔═╗  ║║  ╔═╗        ║
+║   ╔═════>  ║ ║  ║║   ║ ║  ║ ║  ║║  ║ ║        ║
+║   ║        ╚═╝  ║╚═╗ ╚═╝  ╚═╝  ║║  ╚═╝        ║
+║   ║           ║   ╚═══╗  ╔╗     ║║  ╔╗          ║
+║   ╚══════════>║        ║ ║║     ║║  ║║          ║
+║               ╚════════╝ ╚╝   ╚═╝  ╚╝          ║
+║                                                  ║
+║      ◆     ◆   Position: (12.3, 8.7)              ║
+║      🔑           Steps: 156  FPS: 60             ║
+║                                                  ║
+╚══════════════════════════════════════════════════════╝
+🗺️ Minimap    [▲ Forward]  [▼ Back]   [◄ Left] [► Right]</pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="about" class="section">
+            <div class="container">
+                <h2>项目介绍</h2>
+                <div class="two-columns">
+                    <div class="column">
+                        <h3>技术特点</h3>
+                        <ul>
+                            <li>使用 Rust 语言和 Ratatui 库实现</li>
+                            <li>光线投射技术实现伪3D渲染</li>
+                            <li>ASCII字符画风格，简约而不简单</li>
+                            <li>跨平台支持：Windows、Linux、macOS、Android</li>
+                            <li>60 FPS 流畅渲染体验</li>
+                            <li>随机迷宫生成，每次都是新体验</li>
+                        </ul>
+                    </div>
+                    <div class="column">
+                        <h3>游戏功能</h3>
+                        <ul>
+                            <li>多种彩色墙壁类型</li>
+                            <li>可收集物品：金币、钥匙等</li>
+                            <li>NPC角色：可在墙壁上移动的"T^T"和"(^.^)"</li>
+                            <li>键盘和鼠标双重控制</li>
+                            <li>小地图和全屏3D视图</li>
+                            <li>彩色/单色显示模式切换</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="implementation" class="section">
+            <div class="container">
+                <h2>实现思路</h2>
+                <div class="implementation-content">
+                    <h3>核心技术：光线投射 (Raycasting)</h3>
+                    <p>本项目使用光线投射技术实现伪3D效果，这是早期3D游戏（如Wolfenstein 3D）使用的经典算法：</p>
+                    
+                    <div class="code-block">
+                        <pre><code class="language-rust">// 从摄像机位置向每个像素发射光线
+for x in 0..width {
+    let camera_x = 2.0 * x as f64 / width as f64 - 1.0;
+    let ray_dir_x = dir.x + plane.x * camera_x;
+    let ray_dir_y = dir.y + plane.y * camera_x;
+
+    // DDA算法检测光线与墙壁的碰撞
+    while !hit {
+        if side_dist_x < side_dist_y {
+            side_dist_x += delta_dist_x;
+            map_x += step_x;
+        } else {
+            side_dist_y += delta_dist_y;
+            map_y += step_y;
+        }
+        
+        if world.is_wall(map_x, map_y) {
+            hit = true;
+        }
+    }
+    
+    // 根据距离计算墙壁高度并渲染
+    let line_height = ((height as f64 / perp_wall_dist) as usize).min(height * 4);
+}</code></pre>
+                    </div>
+                    
+                    <h3>模块化设计</h3>
+                    <div class="module-structure">
+                        <div class="module">
+                            <h4>main.rs</h4>
+                            <p>主程序入口，处理事件循环和UI布局</p>
+                        </div>
+                        <div class="module">
+                            <h4>renderer.rs</h4>
+                            <p>渲染引擎，实现光线投射和字符画渲染</p>
+                        </div>
+                        <div class="module">
+                            <h4>camera.rs</h4>
+                            <p>摄像机系统，处理移动、旋转和视角</p>
+                        </div>
+                        <div class="module">
+                            <h4>world.rs</h4>
+                            <p>世界/地图数据结构和碰撞检测</p>
+                        </div>
+                        <div class="module">
+                            <h4>maze_gen.rs</h4>
+                            <p>迷宫生成器，使用递归回溯算法</p>
+                        </div>
+                        <div class="module">
+                            <h4>entities.rs</h4>
+                            <p>游戏实体：物品和NPC的管理</p>
+                        </div>
+                        <div class="module">
+                            <h4>vec2.rs</h4>
+                            <p>2D向量数学库，支持基本向量运算</p>
+                        </div>
+                    </div>
+                    
+                    <h3>字符画渲染</h3>
+                    <p>根据距离和光线角度选择不同的ASCII字符，创建深度和纹理效果：</p>
+                    <div class="code-block">
+                        <pre><code class="language-rust">// 根据距离和侧面选择渲染字符
+fn get_char(&self, distance: f64, side: bool, wall_x: f64, y_ratio: f64) -> char {
+    let brightness = 1.0 / (1.0 + distance * distance * 0.025);
+    let adjusted = if side { brightness * 0.7 } else { brightness };
+    
+    let brick_x = (wall_x * 4.0) as usize % 4;
+    let brick_y = (y_ratio * 6.0) as usize % 6;
+    
+    let is_mortar_h = brick_y == 0 || brick_y == 3;
+    let is_mortar_v = brick_x == 0;
+    
+    if adjusted > 0.75 {
+        if is_mortar_h || is_mortar_v { '░' } else { '█' }
+    } else if adjusted > 0.55 {
+        if is_mortar_h || is_mortar_v { '░' } else { '▓' }
+    } else if adjusted > 0.35 {
+        if is_mortar_h { '·' } else { '▒' }
+    } else if adjusted > 0.20 {
+        '░'
+    } else {
+        '·'
+    }
+}</code></pre>
+                    </div>
+                    
+                    <h3>迷宫生成算法</h3>
+                    <p>使用递归回溯算法生成随机迷宫，确保每次游戏体验都是独特的：</p>
+                    <div class="code-block">
+                        <pre><code class="language-rust">// 递归回溯生成迷宫
+fn carve_path(&mut self, x: usize, y: usize, rng: &mut impl Rng) {
+    self.map[x][y] = false;
+
+    let mut directions = [(0, -2), (0, 2), (-2, 0), (2, 0)];
+    
+    // 随机打乱方向
+    for i in (1..directions.len()).rev() {
+        let j = rng.gen_range(0..=i);
+        directions.swap(i, j);
+    }
+
+    // 递归访问每个方向
+    for (dx, dy) in directions.iter() {
+        let nx = x as i32 + dx;
+        let ny = y as i32 + dy;
+
+        if nx > 0 && ny > 0 && nx < (MAP_WIDTH - 1) as i32 && ny < (MAP_HEIGHT - 1) as i32 {
+            let nx = nx as usize;
+            let ny = ny as usize;
+
+            if self.map[nx][ny] {
+                let mx = (x as i32 + dx / 2) as usize;
+                let my = (y as i32 + dy / 2) as usize;
+                self.map[mx][my] = false;
+                
+                self.carve_path(nx, ny, rng);
+            }
+        }
+    }
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="source-code" class="section">
+            <div class="container">
+                <h2>源代码预览</h2>
+                <div class="code-browser">
+                    <div class="file-list">
+                        <div class="file-item active" data-file="main.rs">main.rs</div>
+                        <div class="file-item" data-file="renderer.rs">renderer.rs</div>
+                        <div class="file-item" data-file="camera.rs">camera.rs</div>
+                        <div class="file-item" data-file="world.rs">world.rs</div>
+                        <div class="file-item" data-file="maze_gen.rs">maze_gen.rs</div>
+                        <div class="file-item" data-file="entities.rs">entities.rs</div>
+                        <div class="file-item" data-file="vec2.rs">vec2.rs</div>
+                        <div class="file-item" data-file="cargo_toml">Cargo.toml</div>
+                    </div>
+                    <div class="code-container">
+                        <div class="file-header">
+                            <span id="file-name">main.rs</span>
+                            <button id="copy-code" class="btn small">复制代码</button>
+                        </div>
+                        <div class="code-content">
+                            <pre><code class="language-rust" id="code-display">// 代码内容将通过JavaScript加载</code></pre>
+                        </div>
+                    </div>
+                </div>
+                <div class="download-source">
+                    <a href="#" id="download-source-btn" class="btn primary">下载完整源代码</a>
+                </div>
+            </div>
+        </section>
+
+        <section id="screenshots" class="section">
+            <div class="container">
+                <h2>游戏截图</h2>
+                <div class="screenshot-gallery">
+                    <div class="screenshot-item">
+                        <img src="images/screenshot1.png" alt="游戏主界面" loading="lazy">
+                        <div class="screenshot-caption">
+                            <h3>游戏界面</h3>
+                            <p>展示完整的3D迷宫效果和用户界面</p>
+                        </div>
+                    </div>
+                    
+                    <div class="screenshot-item">
+                        <img src="images/screenshot2.png" alt="彩色墙壁效果" loading="lazy">
+                        <div class="screenshot-caption">
+                            <h3>彩色墙壁效果</h3>
+                            <p>不同颜色的墙壁和迷宫结构</p>
+                        </div>
+                    </div>
+                    
+                    <div class="screenshot-item">
+                        <img src="images/screenshot3.png" alt="3D渲染效果" loading="lazy">
+                        <div class="screenshot-caption">
+                            <h3>3D渲染效果</h3>
+                            <p>伪3D渲染技术实现的游戏视角</p>
+                        </div>
+                    </div>
+                    
+                    <div class="screenshot-item">
+                        <img src="images/screenshot4.png" alt="终端运行界面" loading="lazy">
+                        <div class="screenshot-caption">
+                            <h3>终端运行界面</h3>
+                            <p>在各种终端环境中的运行效果</p>
+                        </div>
+                    </div>
+                    
+                    <div class="screenshot-item">
+                        <img src="images/screenshot5.png" alt="详细游戏界面" loading="lazy">
+                        <div class="screenshot-caption">
+                            <h3>详细游戏界面</h3>
+                            <p>包含小地图、控制按钮和状态信息</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="screenshot-actions">
+                    <a href="image_gallery.html" class="btn secondary">查看完整图库</a>
+                </div>
+            </div>
+        </section>
+
+        <section id="demo" class="section">
+            <div class="container">
+                <h2>在线预览</h2>
+                <div class="demo-content">
+                    <div class="demo-info">
+                        <h3>无需下载，立即体验</h3>
+                        <p>直接在浏览器中体验 arsvt3d 的完整功能，包括：</p>
+                        <ul>
+                            <li>完整的3D迷宫渲染效果</li>
+                            <li>键盘和鼠标控制</li>
+                            <li>随机迷宫生成</li>
+                            <li>物品收集和NPC交互</li>
+                            <li>彩色/单色模式切换</li>
+                            <li>小地图和全屏视图</li>
+                        </ul>
+                        <div class="demo-controls">
+                            <h4>快捷键说明</h4>
+                            <div class="controls-grid">
+                                <div class="control-item">
+                                    <kbd>W/A/S/D</kbd>
+                                    <span>移动</span>
+                                </div>
+                                <div class="control-item">
+                                    <kbd>←→</kbd>
+                                    <span>视角旋转</span>
+                                </div>
+                                <div class="control-item">
+                                    <kbd>E/C</kbd>
+                                    <span>上下视角</span>
+                                </div>
+                                <div class="control-item">
+                                    <kbd>空格</kbd>
+                                    <span>跳跃</span>
+                                </div>
+                                <div class="control-item">
+                                    <kbd>M</kbd>
+                                    <span>彩色/单色</span>
+                                </div>
+                                <div class="control-item">
+                                    <kbd>R</kbd>
+                                    <span>新迷宫</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="demo-actions">
+                            <a href="https://arsvt3d.netlify.app/" target="_blank" class="btn primary large" rel="noopener noreferrer">
+                                🎮 在新窗口打开
+                            </a>
+                            <button id="fullscreen-demo" class="btn secondary large">
+                                🖥️ 全屏体验
+                            </button>
+                        </div>
+                        <div class="demo-notes">
+                            <h4>注意事项</h4>
+                            <ul>
+                                <li>推荐使用现代浏览器（Chrome、Firefox、Safari、Edge）</li>
+                                <li>Web版本可能与原生版本略有差异</li>
+                                <li>全屏模式下体验最佳</li>
+                                <li>首次加载可能需要几秒钟时间</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="demo-preview">
+                        <div class="iframe-container">
+                            <iframe 
+                                id="demo-frame" 
+                                src="https://arsvt3d.netlify.app/" 
+                                title="arsvt3d 在线演示"
+                                frameborder="0"
+                                allowfullscreen>
+                            </iframe>
+                            <div class="iframe-overlay" id="iframe-overlay">
+                                <div class="overlay-content">
+                                    <h3>点击开始游戏</h3>
+                                    <p>将在本页面中加载游戏演示</p>
+                                    <button id="start-demo" class="btn primary">开始游戏</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="download" class="section">
+            <div class="container">
+                <h2>下载安装</h2>
+                
+                <div class="install-methods">
+                    <div class="method-card">
+                        <h3>方法一：Cargo 安装</h3>
+                        <div class="code-block">
+                            <pre><code>cargo install arsvt3d</code></pre>
+                        </div>
+                        <p>或从源码安装：</p>
+                        <div class="code-block">
+                            <pre><code>cargo install --git https://gitee.com/nlsidf/arsvt.git/</code></pre>
+                        </div>
+                    </div>
+                    
+                    <div class="method-card">
+                        <h3>方法二：NPM 安装</h3>
+                        <div class="code-block">
+                            <pre><code>npm install arsvt3d</code></pre>
+                        </div>
+                        <p>支持 Windows、macOS、Linux 和 Android 平台</p>
+                    </div>
+                    
+                    <div class="method-card">
+                        <h3>方法三：直接下载二进制文件</h3>
+                        <div class="platform-selector">
+                            <select id="platform-select">
+                                <option value="">选择你的平台</option>
+                                <option value="windows-x64">Windows x64</option>
+                                <option value="windows-x86">Windows x86</option>
+                                <option value="linux-x64">Linux x64</option>
+                                <option value="linux-arm64">Linux ARM64</option>
+                                <option value="macos-x64">macOS Intel</option>
+                                <option value="macos-arm64">macOS Apple Silicon</option>
+                                <option value="android-arm64">Android ARM64</option>
+                            </select>
+                            <button id="download-binary-btn" class="btn primary" disabled>下载二进制</button>
+                        </div>
+                    </div>
+                    
+                    <div class="method-card">
+                        <h3>方法四：curl 脚本安装（待实现）</h3>
+                        <p>自动检测平台并下载对应二进制文件：</p>
+                        <div class="code-block">
+                            <pre><code id="curl-script">curl -fsSL https://raw.githubusercontent.com/nlsidf/arsvt/main/website/install.sh | sh</code></pre>
+                        </div>
+                        <button id="copy-curl" class="btn small">复制命令</button>
+                        <a href="#" id="download-script" class="btn small">下载安装脚本</a>
+                    </div>
+                </div>
+                
+                <div class="usage">
+                    <h3>使用说明</h3>
+                    <div class="usage-grid">
+                        <div class="usage-item">
+                            <h4>键盘控制</h4>
+                            <ul>
+                                <li>WASD 或方向键：移动</li>
+                                <li>←→：视角旋转</li>
+                                <li>E/C：向上/向下看</li>
+                                <li>空格：跳跃</li>
+                                <li>M：彩色/单色模式</li>
+                                <li>R：新迷宫</li>
+                                <li>Q/Esc：退出</li>
+                            </ul>
+                        </div>
+                        <div class="usage-item">
+                            <h4>鼠标控制</h4>
+                            <ul>
+                                <li>点击按钮执行对应操作</li>
+                                <li>拖拽旋转视角</li>
+                                <li>点击能量条切换显示模式</li>
+                                <li>点击小地图进入全屏</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>© 2025 arsvt3d - 使用 <a href="https://www.rust-lang.org/">Rust</a> 和 <a href="https://github.com/ratatui-org/ratatui">Ratatui</a> 构建</p>
+            <p>项目地址：<a href="https://github.com/nlsidf/arsvt">https://github.com/nlsidf/arsvt</a></p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
