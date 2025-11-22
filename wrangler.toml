@@ -1,0 +1,9 @@
+name = "arsvt3d-introduction"
+compatibility_date = "2024-11-21"
+assets = { directory = "." }
+
+[env.production]
+name = "arsvt3d-demo-prod"
+
+[env.preview] 
+name = "arsvt3d-demo-preview"
